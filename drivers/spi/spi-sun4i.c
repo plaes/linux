@@ -333,7 +333,9 @@ static int sun4i_spi_transfer_one(struct spi_master *master,
 		sun4i_spi_write(sspi, SUN4I_DMA_CTL_REG, 0);
 
 		/* Fill the TX FIFO */
-		sun4i_spi_fill_fifo(sspi, SUN4I_FIFO_DEPTH);
+		/* Filling the fifo fully causes timeout for some reason - at least on spi2 on a10s */
+		/* The can_dma check is txlen >= SUN4I_FIFO_DEPTH so with DMA this should never happen anyway. */
+		sun4i_spi_fill_fifo(sspi, SUN4I_FIFO_DEPTH - 1);
 	}
 
 	/* Start the transfer */
