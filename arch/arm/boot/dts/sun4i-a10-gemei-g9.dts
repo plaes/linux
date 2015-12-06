@@ -48,6 +48,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/sun4i-a10.h>
 
 / {
 	model = "Gemei G9 Tablet";
@@ -65,11 +66,11 @@
 /*
  * TODO:
  *   2x cameras via CSI
- *   audio input
+ *   audio input (+ ext. amplifier enable GPIO)
  *   AXP battery management
  *   NAND
  *   OTG
- *   Touchscreen - gt801_2plus1 @ i2c adapter 2 @ 0x48
+ *   Touchscreen enable and wakeup pins
  */
 &codec {
 	status = "okay";
@@ -111,6 +112,27 @@
 		reg = <0x18>;
 		interrupt-parent = <&pio>;
 		interrupts = <7 0 IRQ_TYPE_EDGE_RISING>; /* PH00 / EINT0 */
+	};
+};
+
+&i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pins_a>;
+	status = "okay";
+
+	touchscreen@55 {
+		compatible = "goodix,gt801_2plus1";
+		reg = <0x55>;
+
+		interrupt-parent = <&pio>;
+		interrupts = <7 21 IRQ_TYPE_EDGE_FALLING>; /* EINT21 (PH21) */
+
+		/*
+		 * TODO - figure out the wakeup pin:
+		 *   ctp_wakeup = port:PB13<1><default><default><1>
+		 * TODO - find correct GPIO pin, PI16 seems to be incorrect:
+		 *   ctp_en     = port:PI16<1><default><default><0>
+		 */
 	};
 };
 
