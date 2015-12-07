@@ -117,7 +117,7 @@ static void gt801x_process_events(struct gt801x_ts_data *ts)
 	for (i = 0; (touch_raw != 0) && (i < ts->max_touch_num); i++) {
 		if (touch_raw & 1)
 			touch_map[touch_num++] = i;
-			touch_raw >>= 1;
+		touch_raw >>= 1;
 	}
 
 	/* Calculate checksum */
