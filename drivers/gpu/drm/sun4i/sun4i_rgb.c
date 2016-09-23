@@ -159,7 +159,7 @@ static void sun4i_rgb_encoder_enable(struct drm_encoder *encoder)
 	/* encoder->bridge can be NULL; drm_bridge_enable checks for it */
 	drm_bridge_enable(encoder->bridge);
 
-	sun4i_tcon_channel_enable(tcon, 0);
+	sun4i_tcon_channel_enable(tcon, 0, DRM_MODE_ENCODER_DAC);
 }
 
 static void sun4i_rgb_encoder_disable(struct drm_encoder *encoder)
@@ -170,7 +170,7 @@ static void sun4i_rgb_encoder_disable(struct drm_encoder *encoder)
 
 	DRM_DEBUG_DRIVER("Disabling RGB output\n");
 
-	sun4i_tcon_channel_disable(tcon, 0);
+	sun4i_tcon_channel_disable(tcon, 0, DRM_MODE_ENCODER_DAC);
 
 	/* encoder->bridge can be NULL; drm_bridge_disable checks for it */
 	drm_bridge_disable(encoder->bridge);
@@ -189,7 +189,7 @@ static void sun4i_rgb_encoder_mode_set(struct drm_encoder *encoder,
 	struct sun4i_drv *drv = rgb->drv;
 	struct sun4i_tcon *tcon = drv->tcon;
 
-	sun4i_tcon0_mode_set(tcon, mode);
+	sun4i_tcon0_mode_set(tcon, mode, DRM_MODE_ENCODER_DAC);
 
 	clk_set_rate(tcon->dclk, mode->crtc_clock * 1000);
 
