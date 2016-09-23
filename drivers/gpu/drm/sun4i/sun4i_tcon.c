@@ -124,7 +124,8 @@ static int sun4i_tcon_get_clk_delay(struct drm_display_mode *mode,
 }
 
 void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
-			  struct drm_display_mode *mode)
+			  struct drm_display_mode *mode,
+			  int type)
 {
 	unsigned int bp, hsync, vsync;
 	u8 clk_delay;
