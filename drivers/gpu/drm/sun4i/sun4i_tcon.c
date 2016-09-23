@@ -29,6 +29,7 @@
 #include "sun4i_dotclock.h"
 #include "sun4i_drv.h"
 #include "sun4i_rgb.h"
+#include "sun4i_lvds.h"
 #include "sun4i_tcon.h"
 
 void sun4i_tcon_disable(struct sun4i_tcon *tcon)
@@ -518,7 +519,8 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 		goto err_free_clocks;
 	}
 
-	ret = sun4i_rgb_init(drm);
+	//ret = sun4i_rgb_init(drm);
+	ret = sun4i_lvds_init(drm);
 	if (ret < 0)
 		goto err_free_clocks;
 
