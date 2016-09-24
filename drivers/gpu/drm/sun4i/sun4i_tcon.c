@@ -18,6 +18,7 @@
 #include <drm/drm_panel.h>
 
 #include <linux/component.h>
+#include <linux/delay.h>
 #include <linux/ioport.h>
 #include <linux/of_address.h>
 #include <linux/of_graph.h>
@@ -75,7 +76,38 @@ void sun4i_tcon_channel_enable(struct sun4i_tcon *tcon, int channel, int type)
 		regmap_update_bits(tcon->regs, SUN4I_TCON0_CTL_REG,
 				   SUN4I_TCON0_CTL_TCON_ENABLE,
 				   SUN4I_TCON0_CTL_TCON_ENABLE);
+
+		if (DRM_MODE_ENCODER_LVDS == type) {
+			/* Enable the LVDS */
+			regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
+					   SUN4I_TCON0_LVDS_IF_ENABLE,
+					   SUN4I_TCON0_LVDS_IF_ENABLE);
+
+			regmap_write(tcon->regs, SUN4I_TCON0_LVDS_ANA0_REG,
+				     SUN4I_TCON0_LVDS_ANA0_INIT);
+
+			regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_ANA0_REG,
+					   SUN4I_TCON0_LVDS_ANA0_UPDATE,
+					   SUN4I_TCON0_LVDS_ANA0_UPDATE);
+
+			udelay(2000);
+
+			regmap_write(tcon->regs, SUN4I_TCON0_LVDS_ANA1_REG,
+				     SUN4I_TCON0_LVDS_ANA1_INIT);
+
+			udelay(1000);
+
+			regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_ANA1_REG,
+				     SUN4I_TCON0_LVDS_ANA1_UPDATE,
+				     SUN4I_TCON0_LVDS_ANA1_UPDATE);
+
+			regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_ANA0_REG,
+					   SUN4I_TCON0_LVDS_ANA0_UPDATE,
+					   SUN4I_TCON0_LVDS_ANA0_UPDATE);
+		}
+
 		clk_prepare_enable(tcon->dclk);
+
 	} else if (channel == 1) {
 		regmap_update_bits(tcon->regs, SUN4I_TCON1_CTL_REG,
 				   SUN4I_TCON1_CTL_TCON_ENABLE,
@@ -165,12 +197,29 @@ void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 		     SUN4I_TCON0_BASIC2_V_BACKPORCH(bp));
 
 	/* Set Hsync and Vsync length */
-	hsync = mode->crtc_hsync_end - mode->crtc_hsync_start;
-	vsync = mode->crtc_vsync_end - mode->crtc_vsync_start;
-	DRM_DEBUG_DRIVER("Setting HSYNC %d, VSYNC %d\n", hsync, vsync);
-	regmap_write(tcon->regs, SUN4I_TCON0_BASIC3_REG,
-		     SUN4I_TCON0_BASIC3_V_SYNC(vsync) |
-		     SUN4I_TCON0_BASIC3_H_SYNC(hsync));
+	if (DRM_MODE_ENCODER_LVDS != type) {
+		// Not needed for LVDS?
+		hsync = mode->crtc_hsync_end - mode->crtc_hsync_start;
+		vsync = mode->crtc_vsync_end - mode->crtc_vsync_start;
+		DRM_DEBUG_DRIVER("Setting HSYNC %d, VSYNC %d\n", hsync, vsync);
+		regmap_write(tcon->regs, SUN4I_TCON0_BASIC3_REG,
+			     SUN4I_TCON0_BASIC3_V_SYNC(vsync) |
+			     SUN4I_TCON0_BASIC3_H_SYNC(hsync));
+	}
+
+	if (DRM_MODE_ENCODER_LVDS == type) {
+		/* Setup bit depth */
+		/* TODO: Figure out where to get display bit depth
+		 * val = (1: 18-bit, 0: 24-bit)
+		 * TODO: Should we set more registers:
+		 * BIT(28) - LVDS_DIRECTION
+		 * BIT(27) - LVDS_MODE
+		 * BIT(23) - LVDS_CORRECT_MODE
+		 */
+		regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
+				   SUN4I_TCON0_LVDS_IF_BITWIDTH,
+				   SUN4I_TCON0_LVDS_IF_BITWIDTH);
+	}
 
 	/* Setup the polarity of the various signals */
 	if (!(mode->flags & DRM_MODE_FLAG_PHSYNC))
@@ -179,8 +228,15 @@ void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 	if (!(mode->flags & DRM_MODE_FLAG_PVSYNC))
 		val |= SUN4I_TCON0_IO_POL_VSYNC_POSITIVE;
 
+
+	/* Set proper DCLK phase value */
+	if (DRM_MODE_ENCODER_LVDS == type)
+		val |= SUN4I_TCON0_IO_POL_DCLK_PHASE(1);
+
 	regmap_update_bits(tcon->regs, SUN4I_TCON0_IO_POL_REG,
-			   SUN4I_TCON0_IO_POL_HSYNC_POSITIVE | SUN4I_TCON0_IO_POL_VSYNC_POSITIVE,
+			   SUN4I_TCON0_IO_POL_HSYNC_POSITIVE |
+			   SUN4I_TCON0_IO_POL_VSYNC_POSITIVE |
+			   SUN4I_TCON0_IO_POL_DCLK_PHASE_MASK,
 			   val);
 
 	/* Map output pins to channel 0 */
