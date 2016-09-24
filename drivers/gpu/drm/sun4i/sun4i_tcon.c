@@ -18,6 +18,7 @@
 #include <drm/drm_panel.h>
 
 #include <linux/component.h>
+#include <linux/delay.h>
 #include <linux/ioport.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
@@ -29,6 +30,7 @@
 #include "sun4i_crtc.h"
 #include "sun4i_dotclock.h"
 #include "sun4i_drv.h"
+#include "sun4i_lvds.h"
 #include "sun4i_rgb.h"
 #include "sun4i_tcon.h"
 
@@ -169,12 +171,29 @@ void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 		     SUN4I_TCON0_BASIC2_V_BACKPORCH(bp));
 
 	/* Set Hsync and Vsync length */
-	hsync = mode->crtc_hsync_end - mode->crtc_hsync_start;
-	vsync = mode->crtc_vsync_end - mode->crtc_vsync_start;
-	DRM_DEBUG_DRIVER("Setting HSYNC %d, VSYNC %d\n", hsync, vsync);
-	regmap_write(tcon->regs, SUN4I_TCON0_BASIC3_REG,
-		     SUN4I_TCON0_BASIC3_V_SYNC(vsync) |
-		     SUN4I_TCON0_BASIC3_H_SYNC(hsync));
+	if (type != DRM_MODE_ENCODER_LVDS) {
+		// Not needed for LVDS?
+		hsync = mode->crtc_hsync_end - mode->crtc_hsync_start;
+		vsync = mode->crtc_vsync_end - mode->crtc_vsync_start;
+		DRM_DEBUG_DRIVER("Setting HSYNC %d, VSYNC %d\n", hsync, vsync);
+		regmap_write(tcon->regs, SUN4I_TCON0_BASIC3_REG,
+			     SUN4I_TCON0_BASIC3_V_SYNC(vsync) |
+			     SUN4I_TCON0_BASIC3_H_SYNC(hsync));
+	}
+
+	if (type == DRM_MODE_ENCODER_LVDS) {
+		/* Setup bit depth */
+		/* TODO: Figure out where to get display bit depth
+		 * val = (1: 18-bit, 0: 24-bit)
+		 * TODO: Should we set more registers:
+		 * BIT(28) - LVDS_DIRECTION
+		 * BIT(27) - LVDS_MODE
+		 * BIT(23) - LVDS_CORRECT_MODE
+		 */
+		regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
+				   SUN4I_TCON0_LVDS_IF_BITWIDTH,
+				   SUN4I_TCON0_LVDS_IF_BITWIDTH);
+	}
 
 	/* Setup the polarity of the various signals */
 	if (!(mode->flags & DRM_MODE_FLAG_PHSYNC))
@@ -183,8 +202,15 @@ void sun4i_tcon0_mode_set(struct sun4i_tcon *tcon,
 	if (!(mode->flags & DRM_MODE_FLAG_PVSYNC))
 		val |= SUN4I_TCON0_IO_POL_VSYNC_POSITIVE;
 
+
+	/* Set proper DCLK phase value */
+	if (type == DRM_MODE_ENCODER_LVDS)
+		val |= SUN4I_TCON0_IO_POL_DCLK_PHASE(1);
+
 	regmap_update_bits(tcon->regs, SUN4I_TCON0_IO_POL_REG,
-			   SUN4I_TCON0_IO_POL_HSYNC_POSITIVE | SUN4I_TCON0_IO_POL_VSYNC_POSITIVE,
+			   SUN4I_TCON0_IO_POL_HSYNC_POSITIVE |
+			   SUN4I_TCON0_IO_POL_VSYNC_POSITIVE |
+			   SUN4I_TCON0_IO_POL_DCLK_PHASE_MASK,
 			   val);
 
 	/* Map output pins to channel 0 */
@@ -480,6 +506,7 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 	struct drm_device *drm = data;
 	struct sun4i_drv *drv = drm->dev_private;
 	struct sun4i_tcon *tcon;
+	const char *mode;
 	int ret;
 
 	tcon = devm_kzalloc(dev, sizeof(*tcon), GFP_KERNEL);
@@ -525,7 +552,18 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 		goto err_free_clocks;
 	}
 
-	ret = sun4i_rgb_init(drm);
+	/* Check which output mode is set, defaulting to RGB */
+	ret = of_property_read_string(dev->of_node, "mode", &mode);
+
+	if (ret || !strcmp(mode, "rgb"))
+		ret = sun4i_rgb_init(drm);
+	else if (!strcmp(mode, "lvds"))
+		ret = sun4i_lvds_init(drm);
+	else {
+		dev_err(dev, "Unknown TCON mode: %s\n", mode);
+		ret = -1;
+	}
+
 	if (ret < 0)
 		goto err_free_clocks;
 

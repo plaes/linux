@@ -114,6 +114,35 @@ static void sun4i_lvds_encoder_enable(struct drm_encoder *encoder)
 	/* encoder->bridge can be NULL; drm_bridge_enable checks for it */
 	drm_bridge_enable(encoder->bridge);
 
+	/* Enable the LVDS */
+	regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_IF_REG,
+			   SUN4I_TCON0_LVDS_IF_ENABLE,
+			   SUN4I_TCON0_LVDS_IF_ENABLE);
+
+	/*
+	 * TODO: SUN4I_TCON0_LVDS_ANA0_REG_C and SUN4I_TCON0_LVDS_ANA0_PD
+	 * registers span 3 bits, but we only set upper 2 for both
+	 * of them based on values taken from Allwinner driver.
+	 */
+	regmap_write(tcon->regs, SUN4I_TCON0_LVDS_ANA0_REG,
+		     SUN4I_TCON0_LVDS_ANA0_CK_EN |
+		     SUN4I_TCON0_LVDS_ANA0_REG_V |
+		     SUN4I_TCON0_LVDS_ANA0_REG_C |
+		     SUN4I_TCON0_LVDS_ANA0_EN_MB |
+		     SUN4I_TCON0_LVDS_ANA0_PD |
+		     SUN4I_TCON0_LVDS_ANA0_DCHS);
+
+	udelay(2000);
+
+	regmap_write(tcon->regs, SUN4I_TCON0_LVDS_ANA1_REG,
+		     SUN4I_TCON0_LVDS_ANA1_INIT);
+
+	udelay(1000);
+
+	regmap_update_bits(tcon->regs, SUN4I_TCON0_LVDS_ANA1_REG,
+			   SUN4I_TCON0_LVDS_ANA1_UPDATE,
+		           SUN4I_TCON0_LVDS_ANA1_UPDATE);
+
 	sun4i_tcon_channel_enable(tcon, 0);
 }
 
