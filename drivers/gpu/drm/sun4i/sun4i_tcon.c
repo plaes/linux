@@ -517,6 +517,12 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 	tcon->drm = drm;
 	tcon->dev = dev;
 	tcon->quirks = of_device_get_match_data(dev);
+	/* XXX */
+	if (of_device_is_compatible(dev->of_node, "allwinner,sun5i-a13-tcon")) {
+		tcon->has_lvds = true;
+	} else {
+		tcon->has_lvds = false;
+	}
 
 	tcon->lcd_rst = devm_reset_control_get(dev, "lcd");
 	if (IS_ERR(tcon->lcd_rst)) {
@@ -532,6 +538,24 @@ static int sun4i_tcon_bind(struct device *dev, struct device *master,
 	if (ret) {
 		dev_err(dev, "Couldn't deassert our reset line\n");
 		return ret;
+	}
+
+	tcon->lvds_rst = NULL;
+	if (tcon->has_lvds) {
+		tcon->lvds_rst = devm_reset_control_get(dev, "lvds");
+		if (IS_ERR(tcon->lvds_rst)) {
+			dev_err(dev, "Couldn't get LVDS reset line\n");
+			return PTR_ERR(tcon->lvds_rst);
+		}
+
+		if (!reset_control_status(tcon->lvds_rst))
+			reset_control_assert(tcon->lvds_rst);
+
+		ret = reset_control_deassert(tcon->lvds_rst);
+		if (ret) {
+			dev_err(dev, "Couldn't deassert LVDS reset line\n");
+			return ret;
+		}
 	}
 
 	ret = sun4i_tcon_init_regmap(dev, tcon);
@@ -573,6 +597,9 @@ err_free_clocks:
 	sun4i_tcon_free_clocks(tcon);
 err_assert_reset:
 	reset_control_assert(tcon->lcd_rst);
+	if (tcon->has_lvds)
+		reset_control_assert(tcon->lvds_rst);
+
 	return ret;
 }
 
