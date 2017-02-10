@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Hans de Goede <hdegoede@redhat.com>
+ * Copyright (C) 2016 Icenowy Zheng <icenowy@aosc.xyz>
  *
  * This file is dual-licensed: you can use it either under the terms
  * of the GPL or the X11 license, at your option. Note that this dual
@@ -41,13 +41,12 @@
  */
 
 /dts-v1/;
-#include "sun5i-a10s.dtsi"
+#include "sun8i-v3s.dtsi"
 #include "sunxi-common-regulators.dtsi"
-#include <dt-bindings/gpio/gpio.h>
 
 / {
-	model = "MK802-A10s";
-	compatible = "allwinner,a10s-mk802", "allwinner,sun5i-a10s";
+	model = "Lichee Pi Zero";
+	compatible = "licheepi,licheepi-zero", "allwinner,sun8i-v3s";
 
 	aliases {
 		serial0 = &uart0;
@@ -59,97 +58,46 @@
 
 	leds {
 		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&led_pins_mk802>;
 
-		red {
-			label = "mk802:red:usr";
-			gpios = <&pio 1 2 GPIO_ACTIVE_HIGH>; /* PB2 */
+		blue_led {
+			label = "licheepi:blue:usr";
+			gpios = <&pio 6 1 GPIO_ACTIVE_LOW>; /* PG1 */
+		};
+
+		green_led {
+			label = "licheepi:green:usr";
+			gpios = <&pio 6 0 GPIO_ACTIVE_LOW>; /* PG0 */
+			default-state = "on";
+		};
+
+		red_led {
+			label = "licheepi:red:usr";
+			gpios = <&pio 6 2 GPIO_ACTIVE_LOW>; /* PG2 */
 		};
 	};
 };
 
-&ehci0 {
-	status = "okay";
-};
-
-&i2c0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&i2c0_pins_a>;
-	status = "okay";
-
-	axp152: pmic@30 {
-		compatible = "x-powers,axp152";
-		reg = <0x30>;
-		interrupts = <0>;
-		interrupt-controller;
-		#interrupt-cells = <1>;
-	};
-};
-
 &mmc0 {
+	pinctrl-0 = <&mmc0_pins_a>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&mmc0_pins_a>, <&mmc0_cd_pin_mk802>;
-	vmmc-supply = <&reg_vcc3v3>;
+	broken-cd;
 	bus-width = <4>;
-	cd-gpios = <&pio 6 1 GPIO_ACTIVE_HIGH>; /* PG1 */
-	cd-inverted;
-	status = "okay";
-};
-
-&mmc1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&mmc1_pins_a>;
 	vmmc-supply = <&reg_vcc3v3>;
-	bus-width = <4>;
-	non-removable;
-	status = "okay";
-};
-
-&ohci0 {
-	status = "okay";
-};
-
-&otg_sram {
-	status = "okay";
-};
-
-&pio {
-	led_pins_mk802: led_pins@0 {
-		pins = "PB2";
-		function = "gpio_out";
-	};
-
-	mmc0_cd_pin_mk802: mmc0_cd_pin@0 {
-		pins = "PG1";
-		function = "gpio_in";
-		bias-pull-up;
-	};
-
-	usb1_vbus_pin_mk802: usb1_vbus_pin@0 {
-		pins = "PB10";
-		function = "gpio_out";
-	};
-};
-
-&reg_usb1_vbus {
-	pinctrl-0 = <&usb1_vbus_pin_mk802>;
-	gpio = <&pio 1 10 GPIO_ACTIVE_HIGH>; /* PB10 */
 	status = "okay";
 };
 
 &uart0 {
-	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_pins_a>;
+	pinctrl-names = "default";
 	status = "okay";
 };
 
 &usb_otg {
-	dr_mode = "peripheral";
+	dr_mode = "otg";
 	status = "okay";
 };
 
 &usbphy {
-	usb1_vbus-supply = <&reg_usb1_vbus>;
+	usb0_id_det-gpio = <&pio 5 6 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
