@@ -40,6 +40,7 @@
 #include <trace/events/mmc.h>
 
 #include "core.h"
+#include "card.h"
 #include "bus.h"
 #include "host.h"
 #include "sdio_bus.h"
@@ -807,7 +808,7 @@ EXPORT_SYMBOL(mmc_interrupt_hpi);
  */
 int mmc_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries)
 {
-	struct mmc_request mrq = {NULL};
+	struct mmc_request mrq = {};
 
 	WARN_ON(!host->claimed);
 
@@ -1630,7 +1631,7 @@ u32 mmc_select_voltage(struct mmc_host *host, u32 ocr)
 	return ocr;
 }
 
-int __mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
+int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 {
 	int err = 0;
 	int old_signal_voltage = host->ios.signal_voltage;
@@ -1646,18 +1647,11 @@ int __mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 
 }
 
-int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage, u32 ocr)
+int mmc_set_uhs_voltage(struct mmc_host *host, u32 ocr)
 {
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 	int err = 0;
 	u32 clock;
-
-	/*
-	 * Send CMD11 only if the request is to switch the card to
-	 * 1.8V signalling.
-	 */
-	if (signal_voltage == MMC_SIGNAL_VOLTAGE_330)
-		return __mmc_set_signal_voltage(host, signal_voltage);
 
 	/*
 	 * If we cannot switch voltages, return failure so the caller
@@ -1697,7 +1691,7 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage, u32 ocr)
 	host->ios.clock = 0;
 	mmc_set_ios(host);
 
-	if (__mmc_set_signal_voltage(host, signal_voltage)) {
+	if (mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180)) {
 		/*
 		 * Voltages may not have been switched, but we've already
 		 * sent CMD11, so a power cycle is required anyway
@@ -1806,11 +1800,11 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 	mmc_set_initial_state(host);
 
 	/* Try to set signal voltage to 3.3V but fall back to 1.8v or 1.2v */
-	if (__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330) == 0)
+	if (!mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330))
 		dev_dbg(mmc_dev(host), "Initial signal voltage of 3.3v\n");
-	else if (__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180) == 0)
+	else if (!mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180))
 		dev_dbg(mmc_dev(host), "Initial signal voltage of 1.8v\n");
-	else if (__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_120) == 0)
+	else if (!mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_120))
 		dev_dbg(mmc_dev(host), "Initial signal voltage of 1.2v\n");
 
 	/*
@@ -2129,7 +2123,7 @@ static unsigned int mmc_erase_timeout(struct mmc_card *card,
 static int mmc_do_erase(struct mmc_card *card, unsigned int from,
 			unsigned int to, unsigned int arg)
 {
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 	unsigned int qty = 0, busy_timeout = 0;
 	bool use_r1b_resp = false;
 	unsigned long timeout;
@@ -2551,7 +2545,7 @@ EXPORT_SYMBOL(mmc_calc_max_discard);
 
 int mmc_set_blocklen(struct mmc_card *card, unsigned int blocklen)
 {
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 
 	if (mmc_card_blockaddr(card) || mmc_card_ddr52(card) ||
 	    mmc_card_hs400(card) || mmc_card_hs400es(card))
@@ -2567,7 +2561,7 @@ EXPORT_SYMBOL(mmc_set_blocklen);
 int mmc_set_blockcount(struct mmc_card *card, unsigned int blockcount,
 			bool is_rel_write)
 {
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 
 	cmd.opcode = MMC_SET_BLOCK_COUNT;
 	cmd.arg = blockcount & 0x0000FFFF;

@@ -47,6 +47,12 @@
 
 #include "queue.h"
 #include "block.h"
+#include "core.h"
+#include "card.h"
+#include "host.h"
+#include "bus.h"
+#include "mmc_ops.h"
+#include "sd_ops.h"
 
 MODULE_ALIAS("mmc:block");
 #ifdef MODULE_PARAM_PREFIX
@@ -442,9 +448,9 @@ out:
 static int __mmc_blk_ioctl_cmd(struct mmc_card *card, struct mmc_blk_data *md,
 			       struct mmc_blk_ioc_data *idata)
 {
-	struct mmc_command cmd = {0};
-	struct mmc_data data = {0};
-	struct mmc_request mrq = {NULL};
+	struct mmc_command cmd = {};
+	struct mmc_data data = {};
+	struct mmc_request mrq = {};
 	struct scatterlist sg;
 	int err;
 	int is_rpmb = false;
@@ -768,9 +774,9 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 	u32 result;
 	__be32 *blocks;
 
-	struct mmc_request mrq = {NULL};
-	struct mmc_command cmd = {0};
-	struct mmc_data data = {0};
+	struct mmc_request mrq = {};
+	struct mmc_command cmd = {};
+	struct mmc_data data = {};
 
 	struct scatterlist sg;
 
@@ -819,7 +825,7 @@ static u32 mmc_sd_num_wr_blocks(struct mmc_card *card)
 
 static int get_card_status(struct mmc_card *card, u32 *status, int retries)
 {
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 	int err;
 
 	cmd.opcode = MMC_SEND_STATUS;
@@ -884,7 +890,7 @@ static int send_stop(struct mmc_card *card, unsigned int timeout_ms,
 		struct request *req, bool *gen_err, u32 *stop_status)
 {
 	struct mmc_host *host = card->host;
-	struct mmc_command cmd = {0};
+	struct mmc_command cmd = {};
 	int err;
 	bool use_r1b_resp = rq_data_dir(req) == WRITE;
 
@@ -1143,7 +1149,7 @@ int mmc_access_rpmb(struct mmc_queue *mq)
 	return false;
 }
 
-static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
+static void mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 {
 	struct mmc_blk_data *md = mq->blkdata;
 	struct mmc_card *card = md->queue.card;
@@ -1152,7 +1158,7 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 
 	if (!mmc_can_erase(card)) {
 		err = -EOPNOTSUPP;
-		goto out;
+		goto fail;
 	}
 
 	from = blk_rq_pos(req);
@@ -1164,29 +1170,26 @@ static int mmc_blk_issue_discard_rq(struct mmc_queue *mq, struct request *req)
 		arg = MMC_TRIM_ARG;
 	else
 		arg = MMC_ERASE_ARG;
-retry:
-	if (card->quirks & MMC_QUIRK_INAND_CMD38) {
-		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				 INAND_CMD38_ARG_EXT_CSD,
-				 arg == MMC_TRIM_ARG ?
-				 INAND_CMD38_ARG_TRIM :
-				 INAND_CMD38_ARG_ERASE,
-				 0);
-		if (err)
-			goto out;
-	}
-	err = mmc_erase(card, from, nr, arg);
-out:
-	if (err == -EIO && !mmc_blk_reset(md, card->host, type))
-		goto retry;
+	do {
+		err = 0;
+		if (card->quirks & MMC_QUIRK_INAND_CMD38) {
+			err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+					 INAND_CMD38_ARG_EXT_CSD,
+					 arg == MMC_TRIM_ARG ?
+					 INAND_CMD38_ARG_TRIM :
+					 INAND_CMD38_ARG_ERASE,
+					 0);
+		}
+		if (!err)
+			err = mmc_erase(card, from, nr, arg);
+	} while (err == -EIO && !mmc_blk_reset(md, card->host, type));
 	if (!err)
 		mmc_blk_reset_success(md, type);
+fail:
 	blk_end_request(req, err, blk_rq_bytes(req));
-
-	return err ? 0 : 1;
 }
 
-static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
+static void mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 				       struct request *req)
 {
 	struct mmc_blk_data *md = mq->blkdata;
@@ -1249,11 +1252,9 @@ out_retry:
 		mmc_blk_reset_success(md, type);
 out:
 	blk_end_request(req, err, blk_rq_bytes(req));
-
-	return err ? 0 : 1;
 }
 
-static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
+static void mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
 {
 	struct mmc_blk_data *md = mq->blkdata;
 	struct mmc_card *card = md->queue.card;
@@ -1264,8 +1265,6 @@ static int mmc_blk_issue_flush(struct mmc_queue *mq, struct request *req)
 		ret = -EIO;
 
 	blk_end_request_all(req, ret);
-
-	return ret ? 0 : 1;
 }
 
 /*
@@ -1593,7 +1592,34 @@ static int mmc_blk_cmd_err(struct mmc_blk_data *md, struct mmc_card *card,
 	return ret;
 }
 
-static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
+static void mmc_blk_rw_cmd_abort(struct mmc_card *card, struct request *req)
+{
+	int ret = 1;
+
+	if (mmc_card_removed(card))
+		req->rq_flags |= RQF_QUIET;
+	while (ret)
+		ret = blk_end_request(req, -EIO,
+				      blk_rq_cur_bytes(req));
+}
+
+static void mmc_blk_rw_start_new(struct mmc_queue *mq, struct mmc_card *card,
+				 struct request *req)
+{
+	if (!req)
+		return;
+
+	if (mmc_card_removed(card)) {
+		req->rq_flags |= RQF_QUIET;
+		blk_end_request_all(req, -EIO);
+	} else {
+		mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+		mmc_start_req(card->host,
+			      &mq->mqrq_cur->mmc_active, NULL);
+	}
+}
+
+static void mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 {
 	struct mmc_blk_data *md = mq->blkdata;
 	struct mmc_card *card = md->queue.card;
@@ -1602,10 +1628,11 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 	enum mmc_blk_status status;
 	struct mmc_queue_req *mq_rq;
 	struct request *req;
-	struct mmc_async_req *areq;
+	struct mmc_async_req *new_areq;
+	struct mmc_async_req *old_areq;
 
 	if (!rqc && !mq->mqrq_prev->req)
-		return 0;
+		return;
 
 	do {
 		if (rqc) {
@@ -1617,24 +1644,32 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				!IS_ALIGNED(blk_rq_sectors(rqc), 8)) {
 				pr_err("%s: Transfer size is not 4KB sector size aligned\n",
 					rqc->rq_disk->disk_name);
-				mq_rq = mq->mqrq_cur;
-				req = rqc;
-				rqc = NULL;
-				goto cmd_abort;
+				mmc_blk_rw_cmd_abort(card, rqc);
+				return;
 			}
 
 			mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
-			areq = &mq->mqrq_cur->mmc_active;
+			new_areq = &mq->mqrq_cur->mmc_active;
 		} else
-			areq = NULL;
-		areq = mmc_start_req(card->host, areq, &status);
-		if (!areq) {
+			new_areq = NULL;
+
+		old_areq = mmc_start_req(card->host, new_areq, &status);
+		if (!old_areq) {
+			/*
+			 * We have just put the first request into the pipeline
+			 * and there is nothing more to do until it is
+			 * complete.
+			 */
 			if (status == MMC_BLK_NEW_REQUEST)
 				mq->flags |= MMC_QUEUE_NEW_REQUEST;
-			return 0;
+			return;
 		}
 
-		mq_rq = container_of(areq, struct mmc_queue_req, mmc_active);
+		/*
+		 * An asynchronous request has been completed and we proceed
+		 * to handle the result of it.
+		 */
+		mq_rq =	container_of(old_areq, struct mmc_queue_req, mmc_active);
 		brq = &mq_rq->brq;
 		req = mq_rq->req;
 		type = rq_data_dir(req) == READ ? MMC_BLK_READ : MMC_BLK_WRITE;
@@ -1660,8 +1695,8 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				pr_err("%s BUG rq_tot %d d_xfer %d\n",
 				       __func__, blk_rq_bytes(req),
 				       brq->data.bytes_xfered);
-				rqc = NULL;
-				goto cmd_abort;
+				mmc_blk_rw_cmd_abort(card, req);
+				return;
 			}
 			break;
 		case MMC_BLK_CMD_ERR:
@@ -1729,31 +1764,16 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 		}
 	} while (ret);
 
-	return 1;
+	return;
 
  cmd_abort:
-	if (mmc_card_removed(card))
-		req->rq_flags |= RQF_QUIET;
-	while (ret)
-		ret = blk_end_request(req, -EIO,
-				blk_rq_cur_bytes(req));
+	mmc_blk_rw_cmd_abort(card, req);
 
  start_new_req:
-	if (rqc) {
-		if (mmc_card_removed(card)) {
-			rqc->rq_flags |= RQF_QUIET;
-			blk_end_request_all(rqc, -EIO);
-		} else {
-			mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
-			mmc_start_req(card->host,
-				      &mq->mqrq_cur->mmc_active, NULL);
-		}
-	}
-
-	return 0;
+	mmc_blk_rw_start_new(mq, card, rqc);
 }
 
-int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
+void mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 {
 	int ret;
 	struct mmc_blk_data *md = mq->blkdata;
@@ -1769,7 +1789,6 @@ int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		if (req) {
 			blk_end_request_all(req, -EIO);
 		}
-		ret = 0;
 		goto out;
 	}
 
@@ -1778,19 +1797,19 @@ int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		/* complete ongoing async transfer before issuing discard */
 		if (card->host->areq)
 			mmc_blk_issue_rw_rq(mq, NULL);
-		ret = mmc_blk_issue_discard_rq(mq, req);
+		mmc_blk_issue_discard_rq(mq, req);
 	} else if (req && req_op(req) == REQ_OP_SECURE_ERASE) {
 		/* complete ongoing async transfer before issuing secure erase*/
 		if (card->host->areq)
 			mmc_blk_issue_rw_rq(mq, NULL);
-		ret = mmc_blk_issue_secdiscard_rq(mq, req);
+		mmc_blk_issue_secdiscard_rq(mq, req);
 	} else if (req && req_op(req) == REQ_OP_FLUSH) {
 		/* complete ongoing async transfer before issuing flush */
 		if (card->host->areq)
 			mmc_blk_issue_rw_rq(mq, NULL);
-		ret = mmc_blk_issue_flush(mq, req);
+		mmc_blk_issue_flush(mq, req);
 	} else {
-		ret = mmc_blk_issue_rw_rq(mq, req);
+		mmc_blk_issue_rw_rq(mq, req);
 	}
 
 out:
@@ -1802,7 +1821,6 @@ out:
 		 * the 'mmc_blk_issue_rq' with 'mqrq_prev->req'.
 		 */
 		mmc_put_card(card);
-	return ret;
 }
 
 static inline int mmc_blk_readonly(struct mmc_card *card)
