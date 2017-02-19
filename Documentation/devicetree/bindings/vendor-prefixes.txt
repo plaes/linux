@@ -171,6 +171,7 @@ keymile	Keymile GmbH
 khadas	Khadas
 kinetic Kinetic Technologies
 kingnovel	Kingnovel Technology Co., Ltd.
+kontron	Kontron AG
 kosagi	Sutajio Ko-Usagi PTE Ltd.
 kyo	Kyocera Corporation
 lacie	LaCie
