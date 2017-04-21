@@ -823,6 +823,30 @@ static int sun6i_tcon_set_mux(struct sun4i_tcon *tcon,
 	return 0;
 }
 
+static int sun7i_tcon_set_mux(struct sun4i_tcon *tcon,
+			      struct drm_encoder *encoder)
+{
+	struct sun4i_tcon *tcon0 = sun4i_get_tcon0(encoder->dev);
+	u32 shift;
+
+	if (!tcon0)
+		return -EINVAL;
+
+	switch (encoder->encoder_type) {
+	case DRM_MODE_ENCODER_TMDS:
+		/* HDMI */
+		shift = 8;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	regmap_update_bits(tcon0->regs, SUN4I_TCON_MUX_CTRL_REG,
+			   0x3 << shift, tcon->id << shift);
+
+	return 0;
+}
+
 static const struct sun4i_tcon_quirks sun5i_a13_quirks = {
 	.has_channel_1		= true,
 	.set_mux		= sun5i_a13_tcon_set_mux,
@@ -839,6 +863,11 @@ static const struct sun4i_tcon_quirks sun6i_a31s_quirks = {
 	.needs_de_be_mux	= true,
 };
 
+static const struct sun4i_tcon_quirks sun7i_a20_quirks = {
+	.has_channel_1		= true,
+	.set_mux		= sun7i_tcon_set_mux,
+};
+
 static const struct sun4i_tcon_quirks sun8i_a33_quirks = {
 	/* nothing is supported */
 };
@@ -851,6 +880,7 @@ static const struct of_device_id sun4i_tcon_of_table[] = {
 	{ .compatible = "allwinner,sun5i-a13-tcon", .data = &sun5i_a13_quirks },
 	{ .compatible = "allwinner,sun6i-a31-tcon", .data = &sun6i_a31_quirks },
 	{ .compatible = "allwinner,sun6i-a31s-tcon", .data = &sun6i_a31s_quirks },
+	{ .compatible = "allwinner,sun7i-a20-tcon", .data = &sun7i_a20_quirks },
 	{ .compatible = "allwinner,sun8i-a33-tcon", .data = &sun8i_a33_quirks },
 	{ .compatible = "allwinner,sun8i-v3s-tcon", .data = &sun8i_v3s_quirks },
 	{ }
