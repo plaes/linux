@@ -302,8 +302,8 @@
 			compatible = "allwinner,sun4i-a10-tcon";
 			reg = <0x01c0c000 0x1000>;
 			interrupts = <44>;
-			resets = <&ccu RST_TCON0>;
-			reset-names = "lcd";
+			resets = <&ccu RST_TCON0>, <&ccu RST_LVDS>;
+			reset-names = "lcd", "lvds";
 			clocks = <&ccu CLK_AHB_LCD0>,
 				 <&ccu CLK_TCON0_CH0>,
 				 <&ccu CLK_TCON0_CH1>;
