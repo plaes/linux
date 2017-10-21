@@ -48,6 +48,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pwm/pwm.h>
+
 
 / {
 	model = "Gemei G9 Tablet";
@@ -59,6 +61,60 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		enable-gpios = <&pio 7 7 GPIO_ACTIVE_HIGH>; /* PH7 */
+
+		/* TODO: Figure out proper parameters */
+		pwms = <&pwm 0 50000 PWM_POLARITY_INVERTED>;
+		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
+		default-brightness-level = <8>;
+	};
+
+
+	panel {
+		/* LG LP097x02-slq2 10" 1024x768 LVDS panel. */
+		compatible = "lg,lp097x02-slq2-panel", "panel-lvds";
+		backlight = <&backlight>;
+		// XXX: Not sure whether this is the right one...
+		power-supply = <&reg_panel_3v3>;
+
+		width-mm = <197>;
+		height-mm = <147>;
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			/* 1024x768 */
+			clock-frequency = <1000000000>;
+			hactive = <1024>;
+			vactive = <768>;
+
+			hsync-len = <1>;
+			hfront-porch = <260>;
+			hback-porch = <799>;
+
+			vfront-porch = <16>;
+			vback-porch = <15>;
+			vsync-len = <1>;
+		};
+
+		port {
+			panel_input: endpoint {
+				remote-endpoint = <&tcon0_out_lcd>;
+			};
+		};
+	};
+
+	reg_panel_3v3: panel-3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "panel-3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		startup-delay-us = <20000>;
+		enable-active-high;
+		gpio = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH08 */
 	};
 };
 
@@ -78,6 +134,10 @@
 
 &cpu0 {
 	cpu-supply = <&reg_dcdc2>;
+};
+
+&de {
+	status = "okay";
 };
 
 &ehci0 {
@@ -146,6 +206,12 @@
 	status = "okay";
 };
 
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin>;
+	status = "okay";
+};
+
 &reg_dcdc2 {
 	regulator-always-on;
 	regulator-min-microvolt = <1000000>;
@@ -179,6 +245,18 @@
 	status = "okay";
 };
 
+&tcon0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd_lvds_pins>;
+	status = "okay";
+};
+
+&tcon0_out {
+	tcon0_out_lcd: endpoint@0 {
+		reg = <0>;
+		remote-endpoint = <&panel_input>;
+	};
+};
 
 &uart0  {
 	pinctrl-names = "default";
