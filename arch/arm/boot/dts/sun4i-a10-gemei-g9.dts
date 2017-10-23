@@ -78,6 +78,7 @@
 		/* LG LP097x02-slq2 10" 1024x768 LVDS panel. */
 		compatible = "lg,lp097x02-slq2-panel", "panel-lvds";
 		backlight = <&backlight>;
+
 		// XXX: Not sure whether this is the right one...
 		power-supply = <&reg_panel_3v3>;
 
@@ -87,7 +88,7 @@
 
 		panel-timing {
 			/* 1024x768 */
-			clock-frequency = <1000000000>;
+			clock-frequency = <100000000>;
 			hactive = <1024>;
 			vactive = <768>;
 
@@ -112,7 +113,6 @@
 		regulator-name = "panel-3v3";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-		startup-delay-us = <20000>;
 		enable-active-high;
 		gpio = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH08 */
 	};
@@ -214,6 +214,7 @@
 
 &reg_dcdc2 {
 	regulator-always-on;
+	/* XXX: axp20_buck2: 700 <--> 2275 mV at 1400 mV */
 	regulator-min-microvolt = <1000000>;
 	regulator-max-microvolt = <1400000>;
 	regulator-name = "vdd-cpu";
@@ -221,6 +222,7 @@
 
 &reg_dcdc3 {
 	regulator-always-on;
+	/* XXX: axp20_buck3: 700 <--> 3500 mV at 1250 mV */
 	regulator-min-microvolt = <1250000>;
 	regulator-max-microvolt = <1250000>;
 	regulator-name = "vdd-int-dll";
@@ -231,11 +233,16 @@
 };
 
 &reg_ldo2 {
+	/* axp20_ldo2: 1800 <--> 3300 mV at 3000 mV */
 	regulator-always-on;
 	regulator-min-microvolt = <3000000>;
 	regulator-max-microvolt = <3000000>;
 	regulator-name = "avcc";
 };
+
+// TODO: axp20_ldo3: 700 <--> 3500 mV at 2800 mV
+// TODO: axp20_ldo4: 1250 <--> 3300 mV at 2800 mV
+// TODO: axp20_ldoio0: 1800 <--> 3300 mV at 2800 mV 
 
 &reg_usb1_vbus {
 	status = "okay";

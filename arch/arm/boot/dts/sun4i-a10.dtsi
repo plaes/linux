@@ -361,6 +361,7 @@
 				      "tcon-ch1";
 			clock-output-names = "tcon1-pixel-clock";
 			dmas = <&dma SUN4I_DMA_DEDICATED 15>;
+			status = "disabled";
 
 			ports {
 				#address-cells = <1>;
