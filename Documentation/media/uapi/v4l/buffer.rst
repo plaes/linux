@@ -220,17 +220,25 @@ struct v4l2_buffer
 	use ``V4L2_BUF_FLAG_TIMESTAMP_COPY`` the application has to fill
 	in the timestamp which will be copied by the driver to the capture
 	stream.
-    * - struct :c:type:`v4l2_timecode`
+    * - union
+    * -
+      - struct :c:type:`v4l2_timecode`
       - ``timecode``
-      -
-      - When ``type`` is ``V4L2_BUF_TYPE_VIDEO_CAPTURE`` and the
-	``V4L2_BUF_FLAG_TIMECODE`` flag is set in ``flags``, this
+      - When the ``V4L2_BUF_FLAG_TIMECODE`` flag is set in ``flags``, this
 	structure contains a frame timecode. In
 	:c:type:`V4L2_FIELD_ALTERNATE <v4l2_field>` mode the top and
 	bottom field contain the same timecode. Timecodes are intended to
 	help video editing and are typically recorded on video tapes, but
 	also embedded in compressed formats like MPEG. This field is
 	independent of the ``timestamp`` and ``sequence`` fields.
+    * -
+      - __u32
+      - ``tag``
+      - When the ``V4L2_BUF_FLAG_TAG`` flag is set in ``flags``, this
+	structure contains a user-specified tag value.
+
+	It is used by stateless codecs where this tag can be used to
+	refer to buffers that contain reference frames.
     * - __u32
       - ``sequence``
       -
@@ -567,6 +575,14 @@ Buffer Flags
 	when the ``VIDIOC_DQBUF`` ioctl is called. Applications can set
 	this bit and the corresponding ``timecode`` structure when
 	``type`` refers to an output stream.
+    * .. _`V4L2-BUF-FLAG-TAG`:
+
+      - ``V4L2_BUF_FLAG_TAG``
+      - 0x00000200
+      - The ``tag`` field is valid. Applications can set
+	this bit and the corresponding ``tag`` structure. If tags are
+	supported then the ``V4L2_BUF_CAP_SUPPORTS_TAGS`` capability
+	is also set.
     * .. _`V4L2-BUF-FLAG-PREPARED`:
 
       - ``V4L2_BUF_FLAG_PREPARED``
@@ -704,10 +720,10 @@ enum v4l2_memory
 Timecodes
 =========
 
-The struct :c:type:`v4l2_timecode` structure is designed to hold a
-:ref:`smpte12m` or similar timecode. (struct
-struct :c:type:`timeval` timestamps are stored in struct
-:c:type:`v4l2_buffer` field ``timestamp``.)
+The :c:type:`v4l2_buffer_timecode` structure is designed to hold a
+:ref:`smpte12m` or similar timecode.
+(struct :c:type:`timeval` timestamps are stored in the struct
+:c:type:`v4l2_buffer` ``timestamp`` field.)
 
 
 .. c:type:: v4l2_timecode

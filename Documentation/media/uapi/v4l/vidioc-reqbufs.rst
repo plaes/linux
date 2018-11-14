@@ -112,6 +112,7 @@ any DMA in progress, an implicit
 .. _V4L2-BUF-CAP-SUPPORTS-USERPTR:
 .. _V4L2-BUF-CAP-SUPPORTS-DMABUF:
 .. _V4L2-BUF-CAP-SUPPORTS-REQUESTS:
+.. _V4L2-BUF-CAP-SUPPORTS-TAGS:
 
 .. cssclass:: longtable
 
@@ -132,6 +133,9 @@ any DMA in progress, an implicit
     * - ``V4L2_BUF_CAP_SUPPORTS_REQUESTS``
       - 0x00000008
       - This buffer type supports :ref:`requests <media-request-api>`.
+    * - ``V4L2_BUF_CAP_SUPPORTS_TAGS``
+      - 0x00000010
+      - This buffer type supports ``V4L2_BUF_FLAG_TAG``.
 
 Return Value
 ============
