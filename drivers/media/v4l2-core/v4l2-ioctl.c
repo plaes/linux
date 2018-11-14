@@ -498,9 +498,12 @@ static void v4l_print_buffer(const void *arg, bool write_only)
 			p->bytesused, p->m.userptr, p->length);
 	}
 
-	printk(KERN_DEBUG "timecode=%02d:%02d:%02d type=%d, flags=0x%08x, frames=%d, userbits=0x%08x\n",
-			tc->hours, tc->minutes, tc->seconds,
-			tc->type, tc->flags, tc->frames, *(__u32 *)tc->userbits);
+	if (p->flags & V4L2_BUF_FLAG_TAG)
+		printk(KERN_DEBUG "tag=%x\n", p->tag);
+	else if (p->flags & V4L2_BUF_FLAG_TIMECODE)
+		printk(KERN_DEBUG "timecode=%02d:%02d:%02d type=%d, flags=0x%08x, frames=%d, userbits=0x%08x\n",
+		       tc->hours, tc->minutes, tc->seconds,
+		       tc->type, tc->flags, tc->frames, *(__u32 *)tc->userbits);
 }
 
 static void v4l_print_exportbuffer(const void *arg, bool write_only)
