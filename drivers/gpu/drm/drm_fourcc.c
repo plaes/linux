@@ -415,6 +415,25 @@ int drm_format_plane_height(int height, uint32_t format, int plane)
 EXPORT_SYMBOL(drm_format_plane_height);
 
 /**
+ * drm_format_is_yuv - check that the format uses a YUV colorspace
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format uses a YUV colorspace.
+ */
+bool drm_format_is_yuv(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return info->is_yuv;
+}
+EXPORT_SYMBOL(drm_format_is_yuv);
+
+/**
  * drm_format_info_block_width - width in pixels of block.
  * @info: pixel format info
  * @plane: plane index
