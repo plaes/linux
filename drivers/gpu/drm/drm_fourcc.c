@@ -434,6 +434,66 @@ bool drm_format_is_yuv(uint32_t format)
 EXPORT_SYMBOL(drm_format_is_yuv);
 
 /**
+ * drm_format_is_yuv_packed - check that the format is a YUV format with data
+ * laid in a single plane
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a packed YUV format
+ */
+bool drm_format_is_yuv_packed(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_packed(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_packed);
+
+/**
+ * drm_format_is_yuv_semiplanar - check that the format is a YUV format with
+ * data laid in two planes (luminance and chrominance)
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a semiplanar YUV format
+ */
+bool drm_format_is_yuv_semiplanar(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_semiplanar(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_semiplanar);
+
+/**
+ * drm_format_is_yuv_planar - check that the format is a YUV format with data
+ * laid in three planes (one for each YUV component)
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a planar YUV format
+ */
+bool drm_format_is_yuv_planar(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_planar(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_planar);
+
+/**
  * drm_format_info_block_width - width in pixels of block.
  * @info: pixel format info
  * @plane: plane index
