@@ -494,6 +494,111 @@ bool drm_format_is_yuv_planar(uint32_t format)
 EXPORT_SYMBOL(drm_format_is_yuv_planar);
 
 /**
+ * drm_format_is_yuv_sampling_410 - check that the format is a YUV format with
+ * 4:1:0 sub-sampling
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a YUV format with 4:1:0
+ * sub-sampling.
+ */
+bool drm_format_is_yuv_sampling_410(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_sampling_410(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_sampling_410);
+
+/**
+ * drm_format_is_yuv_sampling_411 - check that the format is a YUV format with
+ * 4:1:1 sub-sampling
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a YUV format with 4:1:1
+ * sub-sampling.
+ */
+bool drm_format_is_yuv_sampling_411(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_sampling_411(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_sampling_411);
+
+/**
+ * drm_format_is_yuv_sampling_420 - check that the format is a YUV format with
+ * 4:2:0 sub-sampling
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a YUV format with 4:2:0
+ * sub-sampling.
+ */
+bool drm_format_is_yuv_sampling_420(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_sampling_420(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_sampling_420);
+
+/**
+ * drm_format_is_yuv_sampling_422 - check that the format is a YUV format with
+ * 4:2:2 sub-sampling
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a YUV format with 4:2:2
+ * sub-sampling.
+ */
+bool drm_format_is_yuv_sampling_422(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_sampling_422(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_sampling_422);
+
+/**
+ * drm_format_is_yuv_sampling_444 - check that the format is a YUV format with
+ * 4:4:4 sub-sampling
+ * @format: pixel format
+ *
+ * Returns:
+ * A boolean indicating whether the format is a YUV format with 4:4:4
+ * sub-sampling.
+ */
+bool drm_format_is_yuv_sampling_444(uint32_t format)
+{
+	const struct drm_format_info *info;
+
+	info = drm_format_info(format);
+	if (!info)
+		return false;
+
+	return drm_format_info_is_yuv_sampling_444(info);
+}
+EXPORT_SYMBOL(drm_format_is_yuv_sampling_444);
+
+/**
  * drm_format_info_block_width - width in pixels of block.
  * @info: pixel format info
  * @plane: plane index

@@ -278,6 +278,11 @@ bool drm_format_is_yuv(uint32_t format);
 bool drm_format_is_yuv_packed(uint32_t format);
 bool drm_format_is_yuv_semiplanar(uint32_t format);
 bool drm_format_is_yuv_planar(uint32_t format);
+bool drm_format_is_yuv_sampling_410(uint32_t format);
+bool drm_format_is_yuv_sampling_411(uint32_t format);
+bool drm_format_is_yuv_sampling_420(uint32_t format);
+bool drm_format_is_yuv_sampling_422(uint32_t format);
+bool drm_format_is_yuv_sampling_444(uint32_t format);
 unsigned int drm_format_info_block_width(const struct drm_format_info *info,
 					 int plane);
 unsigned int drm_format_info_block_height(const struct drm_format_info *info,
