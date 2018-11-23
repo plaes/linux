@@ -21,12 +21,99 @@
 #include <drm/drm_gem_cma_helper.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_of.h>
+#include <drm/sun4i_drm.h>
 
 #include "sun4i_drv.h"
 #include "sun4i_frontend.h"
 #include "sun4i_framebuffer.h"
 #include "sun4i_tcon.h"
 #include "sun8i_tcon_top.h"
+
+int drm_sun4i_gem_create_tiled(struct drm_device *drm, void *data,
+			       struct drm_file *file_priv)
+{
+	struct drm_sun4i_gem_create_tiled *args = data;
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_gem_object *gem_obj;
+	uint32_t luma_stride, chroma_stride;
+	uint32_t luma_height, chroma_height;
+	uint32_t chroma_width;
+	const struct drm_format_info *info;
+	int ret;
+
+	info = drm_format_info(args->format);
+	if (!info)
+		return -EINVAL;
+
+	/* The tiled output format only applies to non-packed YUV formats. */
+	if (!info->is_yuv || info->num_planes == 1)
+		return -EINVAL;
+
+	memset(args->pitches, 0, sizeof(args->pitches));
+	memset(args->offsets, 0, sizeof(args->offsets));
+
+	/* Stride and height are aligned to 32 bytes for our tiled format. */
+	luma_stride = ALIGN(args->width, 32);
+	luma_height = ALIGN(args->height, 32);
+
+	chroma_width = args->width;
+
+	/* Semiplanar formats have both U and V data in their chroma plane. */
+	if (drm_format_info_is_yuv_semiplanar(info))
+		chroma_width *= 2;
+
+	chroma_stride = ALIGN(DIV_ROUND_UP(chroma_width, info->hsub), 32);
+	chroma_height = ALIGN(DIV_ROUND_UP(args->height, info->vsub), 32);
+
+	if (drm_format_info_is_yuv_semiplanar(info)) {
+		args->pitches[0] = luma_stride;
+		args->pitches[1] = chroma_stride;
+
+		args->offsets[0] = 0;
+		args->offsets[1] = luma_stride * luma_height;
+
+		args->size = luma_stride * luma_height +
+			     chroma_stride * chroma_height;
+	} else if (drm_format_info_is_yuv_planar(info)) {
+		args->pitches[0] = luma_stride;
+		args->pitches[1] = chroma_stride;
+		args->pitches[2] = chroma_stride;
+
+		args->offsets[0] = 0;
+		args->offsets[1] = luma_stride * luma_height;
+		args->offsets[2] = luma_stride * luma_height +
+				   chroma_stride * chroma_height;
+
+		args->size = luma_stride * luma_height +
+			     chroma_stride * chroma_height * 2;
+	} else {
+		/* No support for other formats in tiled mode. */
+		return -EINVAL;
+	}
+
+	cma_obj = drm_gem_cma_create(drm, args->size);
+	if (IS_ERR(cma_obj))
+		return PTR_ERR(cma_obj);
+
+	gem_obj = &cma_obj->base;
+
+	/*
+	 * allocate a id of idr table where the obj is registered
+	 * and handle has the id what user can see.
+	 */
+	ret = drm_gem_handle_create(file_priv, gem_obj, &args->handle);
+	/* drop reference from allocate - handle holds it now. */
+	drm_gem_object_put_unlocked(gem_obj);
+	if (ret)
+		return ret;
+
+	return PTR_ERR_OR_ZERO(cma_obj);
+}
+
+static const struct drm_ioctl_desc sun4i_drv_ioctls[] = {
+	DRM_IOCTL_DEF_DRV(SUN4I_GEM_CREATE_TILED, drm_sun4i_gem_create_tiled,
+			  DRM_UNLOCKED),
+};
 
 static int drm_sun4i_gem_dumb_create(struct drm_file *file_priv,
 				     struct drm_device *drm,
@@ -44,6 +131,8 @@ static struct drm_driver sun4i_drv_driver = {
 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME | DRIVER_ATOMIC,
 
 	/* Generic Operations */
+	.ioctls			= sun4i_drv_ioctls,
+	.num_ioctls		= ARRAY_SIZE(sun4i_drv_ioctls),
 	.fops			= &sun4i_drv_fops,
 	.name			= "sun4i-drm",
 	.desc			= "Allwinner sun4i Display Engine",
