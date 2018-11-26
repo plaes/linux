@@ -56,6 +56,14 @@ config MEDIA_DIGITAL_TV_SUPPORT
 	  Say Y when you have a board with digital support or a board with
 	  hybrid digital TV and analog TV.
 
+config MEDIA_MEM2MEM_SUPPORT
+    bool "Mem2mem devices (stateless media decoders/encoder support)"
+    ---help---
+	  Enable support for mem2mem / stateless media decoders/encoder.
+
+	  Say Y when you have a system with stateless media encoder/decoder
+	  support.
+
 config MEDIA_RADIO_SUPPORT
 	bool "AM/FM radio receivers/transmitters support"
 	---help---
@@ -95,7 +103,7 @@ source "drivers/media/cec/Kconfig"
 
 config MEDIA_CONTROLLER
 	bool "Media Controller API"
-	depends on MEDIA_CAMERA_SUPPORT || MEDIA_ANALOG_TV_SUPPORT || MEDIA_DIGITAL_TV_SUPPORT
+	depends on MEDIA_CAMERA_SUPPORT || MEDIA_ANALOG_TV_SUPPORT || MEDIA_DIGITAL_TV_SUPPORT || MEDIA_MEM2MEM_SUPPORT
 	---help---
 	  Enable the media controller API used to query media devices internal
 	  topology and configure it dynamically.
@@ -118,7 +126,7 @@ config MEDIA_CONTROLLER_DVB
 config VIDEO_DEV
 	tristate
 	depends on MEDIA_SUPPORT
-	depends on MEDIA_CAMERA_SUPPORT || MEDIA_ANALOG_TV_SUPPORT || MEDIA_RADIO_SUPPORT || MEDIA_SDR_SUPPORT
+	depends on MEDIA_CAMERA_SUPPORT || MEDIA_ANALOG_TV_SUPPORT || MEDIA_RADIO_SUPPORT || MEDIA_SDR_SUPPORT || MEDIA_MEM2MEM_SUPPORT
 	default y
 
 config VIDEO_V4L2_SUBDEV_API
