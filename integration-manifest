@@ -1,0 +1,28 @@
+drm drm-fixes 2e6e902d185027f8e3cb8b7305238f7e35d6a436
+	Linux 4.20-rc4
+drm-misc drm-misc-fixes b9b497554ce0639a4aa237f6e6b0cde735035e31
+	drm/meson: add support for 1080p25 mode
+drm-intel drm-intel-fixes 2455facbb700e3c3ca26b9255956d6ed45cb6217
+	Merge tag 'gvt-fixes-2018-11-26' of https://github.com/intel/gvt-linux into drm-intel-fixes
+drm-amd drm-amd-fixes 2b702e72e33bbdec0764cfb6e1dd00fe1142ae55
+	Merge tag 'drm-misc-fixes-2017-09-28-1' of git://anongit.freedesktop.org/git/drm-misc into drm-fixes
+drm drm-next b239499f927f79401d51a677bc640980ca630604
+	Merge tag 'drm-misc-next-2018-11-21' of git://anongit.freedesktop.org/drm/drm-misc into drm-next
+drm-misc drm-misc-next-fixes 8f054b6f53ff34fb787bde4c5940f86a9c175177
+	drm/panel: simple: Innolux TV123WAM is actually P120ZDG-BF1
+drm-intel drm-intel-next-fixes 651022382c7f8da46cb4872a545ee1da6d097d2a
+	Linux 4.20-rc1
+drm-amd drm-amd-next-fixes 2bd6bf03f4c1c59381d62c61d03f6cc3fe71f66e
+	Linux 4.14-rc1
+drm-misc drm-misc-next a42facc82c3d5841987b8b363a8a5cc564915c3c
+	docs: drm: remove no longer relevant TODO entry
+drm-intel drm-intel-next-queued 0e39037b3165567660b0e03f67534da5269a0465
+	drm/i915: Cache the error string
+drm-amd drm-amd-next 754270c7c56292e97d0eff924a5d5d83f92add07
+	Merge branch 'drm-next-4.15' of git://people.freedesktop.org/~agd5f/linux into drm-next
+sound-upstream for-linus c4cfcf6f4297c9256b53790bacbbbd6901fef468
+	ALSA: hda/realtek - fix the pop noise on headphone for lenovo laptops
+sound-upstream for-next 3103c08f968ddba3fff339a59aba40389b3f724f
+	ALSA: control: Consolidate helpers for adding and replacing ctl elements
+drm-intel topic/core-for-CI dafdf69736d66075836b7bc291584cd0889e7601
+	perf/core: Avoid removing shared pmu_context on unregister
