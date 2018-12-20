@@ -242,14 +242,18 @@ sun4i_hdmi_connector_detect(struct drm_connector *connector, bool force)
 	struct sun4i_hdmi *hdmi = drm_connector_to_sun4i_hdmi(connector);
 	unsigned long reg;
 
-	if (readl_poll_timeout(hdmi->base + SUN4I_HDMI_HPD_REG, reg,
-			       reg & SUN4I_HDMI_HPD_HIGH,
-			       0, 500000)) {
-		cec_phys_addr_invalidate(hdmi->cec_adap);
-		return connector_status_disconnected;
-	}
+	/* TODO: Drop HPD polling and instead keep track of EDID changes */
+	if (!readl_poll_timeout(hdmi->base + SUN4I_HDMI_HPD_REG, reg,
+				reg & SUN4I_HDMI_HPD_HIGH,
+				0, 500000))
+		return connector_status_connected;
 
-	return connector_status_connected;
+	/* Fall back to EDID in case display does not support HPD */
+	if (!IS_ERR(hdmi->i2c) && drm_probe_ddc(hdmi->i2c))
+		return connector_status_connected;
+
+	cec_phys_addr_invalidate(hdmi->cec_adap);
+	return connector_status_disconnected;
 }
 
 static const struct drm_connector_funcs sun4i_hdmi_connector_funcs = {
