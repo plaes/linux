@@ -7,7 +7,8 @@
 
 #include <linux/clk-provider.h>
 #include <linux/io.h>
-#include <linux/of_address.h>
+#include <linux/platform_device.h>
+#include <linux/regmap.h>
 
 #include "ccu_common.h"
 #include "ccu_reset.h"
@@ -1425,18 +1426,9 @@ static const struct sunxi_ccu_desc sun7i_a20_ccu_desc = {
 	.num_resets	= ARRAY_SIZE(sunxi_a10_a20_ccu_resets),
 };
 
-static void __init sun4i_ccu_init(struct device_node *node,
-				  const struct sunxi_ccu_desc *desc)
+static void bootstrap_clocks(void __iomem *reg)
 {
-	void __iomem *reg;
 	u32 val;
-
-	reg = of_io_request_and_map(node, 0, of_node_full_name(node));
-	if (IS_ERR(reg)) {
-		pr_err("%s: Could not map the clock registers\n",
-		       of_node_full_name(node));
-		return;
-	}
 
 	val = readl(reg + SUN4I_PLL_AUDIO_REG);
 
@@ -1463,20 +1455,63 @@ static void __init sun4i_ccu_init(struct device_node *node,
 	val = readl(reg + SUN4I_AHB_REG);
 	val &= ~GENMASK(7, 6);
 	writel(val | (2 << 6), reg + SUN4I_AHB_REG);
-
-	sunxi_ccu_probe(node, reg, desc);
 }
 
-static void __init sun4i_a10_ccu_setup(struct device_node *node)
+static int sun4i_a10_ccu_probe(struct platform_device *pdev)
 {
-	sun4i_ccu_init(node, &sun4i_a10_ccu_desc);
-}
-CLK_OF_DECLARE(sun4i_a10_ccu, "allwinner,sun4i-a10-ccu",
-	       sun4i_a10_ccu_setup);
+	struct resource *res;
+	void __iomem *reg;
 
-static void __init sun7i_a20_ccu_setup(struct device_node *node)
-{
-	sun4i_ccu_init(node, &sun7i_a20_ccu_desc);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	reg = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(reg))
+		return PTR_ERR(reg);
+
+	bootstrap_clocks(reg);
+
+	return sunxi_ccu_probe(pdev->dev.of_node, reg, &sun4i_a10_ccu_desc);
 }
-CLK_OF_DECLARE(sun7i_a20_ccu, "allwinner,sun7i-a20-ccu",
-	       sun7i_a20_ccu_setup);
+
+static int sun7i_a20_ccu_probe(struct platform_device *pdev)
+{
+	struct resource *res;
+	void __iomem *reg;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	reg = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(reg))
+		return PTR_ERR(reg);
+
+	bootstrap_clocks(reg);
+
+	return sunxi_ccu_probe(pdev->dev.of_node, reg, &sun7i_a20_ccu_desc);
+}
+
+
+static const struct of_device_id sun4i_a10_ccu_ids[] = {
+	{ .compatible = "allwinner,sun4i-a10-ccu"},
+	{ }
+};
+
+static struct platform_driver sun4i_a10_ccu_driver = {
+	.probe = sun4i_a10_ccu_probe,
+	.driver = {
+		.name = "sun4i-a10-ccu",
+		.of_match_table = sun4i_a10_ccu_ids,
+	},
+};
+builtin_platform_driver(sun4i_a10_ccu_driver);
+
+static const struct of_device_id sun7i_a20_ccu_ids[] = {
+	{ .compatible = "allwinner,sun7i-a20-ccu"},
+	{ }
+};
+
+static struct platform_driver sun7i_a20_ccu_driver = {
+	.probe = sun7i_a20_ccu_probe,
+	.driver = {
+		.name = "sun7i-a20-ccu",
+		.of_match_table = sun7i_a20_ccu_ids,
+	},
+};
+builtin_platform_driver(sun7i_a20_ccu_driver);
