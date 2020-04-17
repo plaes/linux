@@ -1426,6 +1426,30 @@ static const struct sunxi_ccu_desc sun7i_a20_ccu_desc = {
 	.num_resets	= ARRAY_SIZE(sunxi_a10_a20_ccu_resets),
 };
 
+/*
+ * Add regmap for the GMAC driver (dwmac-sun8i) to allow access to
+ * GMAC configuration register.
+ */
+
+#define SUN7I_A20_GMAC_CFG_REG 0x164
+static bool sun7i_a20_ccu_regmap_accessible_reg(struct device *dev,
+						unsigned int reg)
+{
+	if (reg == SUN7I_A20_GMAC_CFG_REG)
+		return true;
+	return false;
+}
+
+static struct regmap_config sun7i_a20_ccu_regmap_config = {
+	.reg_bits	= 32,
+	.val_bits	= 32,
+	.reg_stride	= 4,
+	.max_register	= 0x1f4, /* clk_out_b */
+
+	.readable_reg	= sun7i_a20_ccu_regmap_accessible_reg,
+	.writeable_reg	= sun7i_a20_ccu_regmap_accessible_reg,
+};
+
 static void bootstrap_clocks(void __iomem *reg)
 {
 	u32 val;
@@ -1474,6 +1498,7 @@ static int sun4i_a10_ccu_probe(struct platform_device *pdev)
 
 static int sun7i_a20_ccu_probe(struct platform_device *pdev)
 {
+	struct regmap *regmap;
 	struct resource *res;
 	void __iomem *reg;
 
@@ -1483,6 +1508,12 @@ static int sun7i_a20_ccu_probe(struct platform_device *pdev)
 		return PTR_ERR(reg);
 
 	bootstrap_clocks(reg);
+
+	regmap = devm_regmap_init_mmio(&pdev->dev, reg,
+				       &sun7i_a20_ccu_regmap_config);
+	if (IS_ERR(regmap))
+		return PTR_ERR(regmap);
+
 
 	return sunxi_ccu_probe(pdev->dev.of_node, reg, &sun7i_a20_ccu_desc);
 }
