@@ -29,16 +29,25 @@ properties:
   clocks:
     items:
       - description: GMAC main clock
+
+      # Deprecated
       - description: TX clock
 
   clock-names:
     items:
       - const: stmmaceth
+
+      # Deprecated
       - const: allwinner_gmac_tx
 
   phy-supply:
     description:
       PHY regulator
+
+  syscon:
+    $ref: /schemas/types.yaml#definitions/phandle
+    description:
+      Phandle to the device containing the GMAC clock register
 
 required:
   - compatible
@@ -48,6 +57,7 @@ required:
   - clocks
   - clock-names
   - phy-mode
+  - syscon
 
 unevaluatedProperties: false
 
@@ -55,11 +65,12 @@ examples:
   - |
     gmac: ethernet@1c50000 {
         compatible = "allwinner,sun7i-a20-gmac";
+        syscon = <&syscon>;
         reg = <0x01c50000 0x10000>;
         interrupts = <0 85 1>;
         interrupt-names = "macirq";
-        clocks = <&ahb_gates 49>, <&gmac_tx>;
-        clock-names = "stmmaceth", "allwinner_gmac_tx";
+        clocks = <&ahb_gates 49>;
+        clock-names = "stmmaceth";
         phy-mode = "mii";
     };
 
