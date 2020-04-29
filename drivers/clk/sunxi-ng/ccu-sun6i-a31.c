@@ -10,6 +10,8 @@
 #include <linux/clk-provider.h>
 #include <linux/io.h>
 #include <linux/of_address.h>
+#include <linux/platform_device.h>
+#include <linux/regmap.h>
 
 #include "ccu_common.h"
 #include "ccu_reset.h"
@@ -1262,5 +1264,61 @@ static void __init sun6i_a31_ccu_setup(struct device_node *node)
 	ccu_mux_notifier_register(pll_cpu_clk.common.hw.clk,
 				  &sun6i_a31_cpu_nb);
 }
-CLK_OF_DECLARE(sun6i_a31_ccu, "allwinner,sun6i-a31-ccu",
-	       sun6i_a31_ccu_setup);
+CLK_OF_DECLARE_DRIVER(sun6i_a31_ccu, "allwinner,sun6i-a31-ccu",
+		      sun6i_a31_ccu_setup);
+
+/*
+ * Regmap for the GMAC driver (dwmac-sunxi) to allow access to
+ * GMAC configuration register.
+ */
+#define SUN6I_A31_GMAC_CFG_REG 0xD0
+static bool sun6i_a31_ccu_regmap_accessible_reg(struct device *dev,
+						unsigned int reg)
+{
+	if (reg == SUN6I_A31_GMAC_CFG_REG)
+		return true;
+	return false;
+}
+
+static struct regmap_config sun6i_a31_ccu_regmap_config = {
+	.reg_bits	= 32,
+	.val_bits	= 32,
+	.reg_stride	= 4,
+	.max_register	= 0x308, /* clk_out_b */
+
+	.readable_reg	= sun6i_a31_ccu_regmap_accessible_reg,
+	.writeable_reg	= sun6i_a31_ccu_regmap_accessible_reg,
+};
+
+static int sun6i_a31_ccu_probe_regmap(struct platform_device *pdev)
+{
+	void __iomem *reg;
+	struct resource *res;
+	struct regmap *regmap;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	reg = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (IS_ERR(reg))
+		return PTR_ERR(reg);
+
+	regmap = devm_regmap_init_mmio(&pdev->dev, reg,
+				       &sun6i_a31_ccu_regmap_config);
+	if (IS_ERR(regmap))
+		return PTR_ERR(regmap);
+
+	return 0;
+}
+
+static const struct of_device_id sun6i_a31_ccu_ids[] = {
+	{ .compatible = "allwinner,sun6i-a31-ccu"},
+	{ }
+};
+
+static struct platform_driver sun6i_a31_ccu_driver = {
+	.probe = sun6i_a31_ccu_probe_regmap,
+	.driver = {
+		.name = "sun6i-a31-ccu",
+		.of_match_table = sun6i_a31_ccu_ids,
+	},
+};
+builtin_platform_driver(sun6i_a31_ccu_driver);
